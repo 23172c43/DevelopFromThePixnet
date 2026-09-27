@@ -41,7 +41,7 @@ except Exception:
     login(token=hf_token)
 
 # Đặt NGAY SAU đoạn login HuggingFace, TRƯỚC "# 5. CHUẨN BỊ HUẤN LUYỆN"
-SEED = 42
+SEED = 26
 random.seed(SEED); np.random.seed(SEED); torch.manual_seed(SEED); torch.cuda.manual_seed_all(SEED)
 # ==========================================
 # Import cac module da tach (kien truc / dataset / ham tien ich / chuan bi du lieu)
