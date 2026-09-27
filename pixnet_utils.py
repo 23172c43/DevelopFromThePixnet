@@ -52,3 +52,25 @@ class PixNetLoss(nn.Module):
 def pcc_per_gene(pred, true):
     vx, vy = pred - pred.mean(axis=0, keepdims=True), true - true.mean(axis=0, keepdims=True)
     return (vx * vy).sum(axis=0) / (np.sqrt((vx ** 2).sum(axis=0)) * np.sqrt((vy ** 2).sum(axis=0)) + 1e-8)
+
+def compute_regression_metrics(pred, true):
+    """Tinh RMSE, MAE, va PCC tung gene roi lay 3 thong ke tom tat theo dung dinh
+    nghia bai bao PixNet (Bang 1/2): PCC@F = phan vi thu nhat (Q1, 25%), PCC@S =
+    trung vi (Q2, 50%), PCC@M = trung binh. pred/true: numpy array [N_spot, N_gene]
+    cung shape (giong dau vao cua pcc_per_gene)."""
+    mse = float(np.mean((pred - true) ** 2))
+    rmse = float(np.sqrt(mse))
+    mae = float(np.mean(np.abs(pred - true)))
+
+    pcc_gene = pcc_per_gene(pred, true)
+    pcc_clean = pcc_gene[~np.isnan(pcc_gene)]
+    if len(pcc_clean) > 0:
+        pcc_f = float(np.percentile(pcc_clean, 25))
+        pcc_s = float(np.percentile(pcc_clean, 50))
+        pcc_m = float(np.mean(pcc_clean))
+    else:
+        pcc_f = pcc_s = pcc_m = 0.0
+
+    return {'mse': mse, 'rmse': rmse, 'mae': mae,
+            'pcc_f': pcc_f, 'pcc_s': pcc_s, 'pcc_m': pcc_m,
+            'n_genes_valid': int(len(pcc_clean))}

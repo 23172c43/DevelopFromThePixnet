@@ -40,13 +40,15 @@ except Exception:
         hf_token = getpass("Nhập Hugging Face access token (cần quyền truy cập MahmoodLab/UNI2-h): ")
     login(token=hf_token)
 
-
+# Đặt NGAY SAU đoạn login HuggingFace, TRƯỚC "# 5. CHUẨN BỊ HUẤN LUYỆN"
+SEED = 42
+random.seed(SEED); np.random.seed(SEED); torch.manual_seed(SEED); torch.cuda.manual_seed_all(SEED)
 # ==========================================
 # Import cac module da tach (kien truc / dataset / ham tien ich / chuan bi du lieu)
 # ==========================================
 from models.PixNet import PixNet
 from dataset_pixnet import Her2STDataset, her2st_collate
-from pixnet_utils import aggregate_sparse_spots, PixNetLoss, pcc_per_gene
+from pixnet_utils import aggregate_sparse_spots, PixNetLoss, pcc_per_gene, compute_regression_metrics
 from prepare_pixnet_data import (WORK_DIR, PROCESSED_DIR, TOP_GENES_FILE,
                                   train_patients, val_patients, test_patients)
 
@@ -113,13 +115,11 @@ use_scaler = (AMP_DTYPE == torch.float16 and device.type == 'cuda')
 scaler = torch.amp.GradScaler('cuda', enabled=use_scaler)
 
 
-SEED = 42
-random.seed(SEED); np.random.seed(SEED); torch.manual_seed(SEED); torch.cuda.manual_seed_all(SEED)
 
 # ==========================================
 # 6. VÒNG LẶP HUẤN LUYỆN
 # ==========================================
-best_pcc_m = -1.0
+best_pcc_m = -9999
 print(f"\n🚀 BẮT ĐẦU TRAIN (PIXNET V2) | BATCH_SIZE: {BATCH_SIZE} | ACCUM_STEPS: {ACCUM_STEPS}")
 
 for epoch in range(NUM_EPOCHS):
@@ -187,15 +187,15 @@ for epoch in range(NUM_EPOCHS):
         avg_val_loss = val_loss / max(1, n_val)
         if all_preds:
             preds_np, trues_np = np.concatenate(all_preds, axis=0), np.concatenate(all_trues, axis=0)
-            mse, mae = float(np.mean((preds_np - trues_np) ** 2)), float(np.mean(np.abs(preds_np - trues_np)))
-            pcc_gene = pcc_per_gene(preds_np, trues_np)
-            pcc_clean = pcc_gene[~np.isnan(pcc_gene)]
-            pcc_m = float(np.mean(pcc_clean)) if len(pcc_clean) else 0.0
+            m = compute_regression_metrics(preds_np, trues_np)
+            mse, rmse, mae = m['mse'], m['rmse'], m['mae']
+            pcc_f, pcc_s, pcc_m = m['pcc_f'], m['pcc_s'], m['pcc_m']
         else:
-            mse = mae = pcc_m = 0.0
+            mse = rmse = mae = pcc_f = pcc_s = pcc_m = 0.0
 
-        print(f"[E{epoch+1}/{NUM_EPOCHS}] lr={current_lr:.1e} train={avg_train_loss:.4f} val={avg_val_loss:.4f} | MSE={mse:.4f} MAE={mae:.4f} PCC@M={pcc_m:.4f}", end="")
-
+        print(f"[E{epoch+1}/{NUM_EPOCHS}] lr={current_lr:.1e} train={avg_train_loss:.4f} val={avg_val_loss:.4f} | "
+              f"RMSE={rmse:.4f} MAE={mae:.4f} PCC@F={pcc_f:.4f} PCC@S={pcc_s:.4f} PCC@M={pcc_m:.4f}", end="")
+        
         if pcc_m > best_pcc_m:
             best_pcc_m = pcc_m
             torch.save(model.state_dict(), CKPT_PATH)
@@ -277,6 +277,11 @@ for sid in test_ids:
 
 if all_p:
     preds_full, trues_full = np.concatenate(all_p, axis=0), np.concatenate(all_t, axis=0)
-    pcc_full = pcc_per_gene(preds_full, trues_full)
-    print(f"\n=== KẾT QUẢ ĐÁNH GIÁ CHÍNH THỨC (N={preds_full.shape[0]} spots) ===")
-    print(f"PCC@M (mean) = {np.mean(pcc_full[~np.isnan(pcc_full)]):.4f}")
+    m_final = compute_regression_metrics(preds_full, trues_full)
+    print(f"\n=== KẾT QUẢ ĐÁNH GIÁ CHÍNH THỨC (N={preds_full.shape[0]} spots, "
+          f"{m_final['n_genes_valid']}/{preds_full.shape[1]} gene hợp lệ) ===")
+    print(f"RMSE  = {m_final['rmse']:.4f}")
+    print(f"MAE   = {m_final['mae']:.4f}")
+    print(f"PCC@F (Q1)     = {m_final['pcc_f']:.4f}")
+    print(f"PCC@S (median) = {m_final['pcc_s']:.4f}")
+    print(f"PCC@M (mean)   = {m_final['pcc_m']:.4f}")
