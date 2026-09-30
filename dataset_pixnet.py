@@ -12,7 +12,10 @@ import torch.nn.functional as F
 from torch.utils.data import Dataset
 from PIL import Image
 from torchvision import transforms
+from seed_utils import seed_everything
 
+SEED = 42
+seed_everything(SEED)
 
 def _compute_tile_grid(W, H, tile_size, margin):
     stride = max(64, tile_size - 2 * margin)

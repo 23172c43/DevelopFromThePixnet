@@ -7,7 +7,10 @@ thanh module rieng va them import can thiet.
 import torch
 import torch.nn as nn
 import numpy as np
+from seed_utils import seed_everything
 
+SEED = 42
+seed_everything(SEED)
 
 def aggregate_sparse_spots(dense_map, spot_coords, spot_radii, orig_img_size):
     _, _, H_out, W_out = dense_map.shape

@@ -26,6 +26,10 @@ from torchvision import transforms
 from huggingface_hub import login
 from tqdm.auto import tqdm
 from getpass import getpass
+from seed_utils import seed_everything
+
+SEED = 42
+seed_everything(SEED)
 
 # Cố gắng lấy Token từ Kaggle Secrets
 try:
@@ -40,9 +44,6 @@ except Exception:
         hf_token = getpass("Nhập Hugging Face access token (cần quyền truy cập MahmoodLab/UNI2-h): ")
     login(token=hf_token)
 
-# Đặt NGAY SAU đoạn login HuggingFace, TRƯỚC "# 5. CHUẨN BỊ HUẤN LUYỆN"
-SEED = 26
-random.seed(SEED); np.random.seed(SEED); torch.manual_seed(SEED); torch.cuda.manual_seed_all(SEED)
 # ==========================================
 # Import cac module da tach (kien truc / dataset / ham tien ich / chuan bi du lieu)
 # ==========================================

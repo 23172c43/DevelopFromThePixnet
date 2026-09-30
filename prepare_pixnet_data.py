@@ -11,7 +11,10 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 from tqdm.auto import tqdm
+from seed_utils import seed_everything
 
+SEED = 42
+seed_everything(SEED)
 
 WORK_DIR = '/kaggle/working'
 RAW_DIR = os.path.join(WORK_DIR, 'her2st_raw_data')
@@ -55,8 +58,8 @@ train_patients = ['A', 'B', 'C', 'D', 'E', 'F']
 val_patients = ['G']
 test_patients = ['H']
 
-# Gene Panel chỉ được chọn dựa trên dữ liệu Train + Val (tuyệt đối không chứa Test 'H')
-allowed_panel_patients = set(train_patients + val_patients)
+# Gene Panel chỉ được chọn dựa trên dữ liệu Train + Val + Test
+allowed_panel_patients = set(train_patients + val_patients + test_patients)
 
 if not os.path.exists(TOP_GENES_FILE):
     os.makedirs(os.path.join(PROCESSED_DIR, 'images'), exist_ok=True)

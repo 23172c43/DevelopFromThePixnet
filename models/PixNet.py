@@ -7,7 +7,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import timm
+from seed_utils import seed_everything
 
+SEED = 42
+seed_everything(SEED)
 
 def make_gn(channels, max_groups=32):
     g = min(max_groups, channels)
